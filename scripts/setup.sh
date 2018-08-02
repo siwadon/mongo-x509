@@ -40,9 +40,24 @@ if [ ! -f "${MONGO_CERTS_DIR}/$MONGO_CERTS_CA_FILE" ]; then
     exit 1
 fi
 
-# TODO: Skip if already initialized 
-# https://github.com/docker-library/mongo/blob/e0735c07abced69a5d8945aace9285288d013a83/3.6/docker-entrypoint.sh#L212
-create-user.sh "$MONGO_CERTS_USER"
+shouldCreateUser='true'
+dbPath="${dbPath:=/data/db}"
+for path in \
+		"$dbPath/WiredTiger" \
+		"$dbPath/journal" \
+		"$dbPath/local.0" \
+		"$dbPath/storage.bson" \
+; do
+		if [ -e "$path" ]; then
+				shouldPerformInitdb=
+				break
+		fi
+done
+
+# Skip creating user if already initialized
+if [ -n "$shouldCreateUser" ]; then
+	create-user.sh "$MONGO_CERTS_USER"
+fi
 
 docker-entrypoint.sh "$@" \
 	--sslPEMKeyFile "$MONGO_CERTS_DIR/$MONGO_CERTS_SERVER_FILE" \
